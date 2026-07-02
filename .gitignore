@@ -1,0 +1,12 @@
+# Build artifacts
+.build/
+Somnia.app/
+AppIcon.icns
+AppIcon.iconset/
+
+# macOS
+.DS_Store
+
+# Editor / misc
+*.swp
+*~
