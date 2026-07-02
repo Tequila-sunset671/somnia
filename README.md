@@ -12,11 +12,11 @@ graph. Built with SwiftUI + WebKit. No Electron, zero external dependencies.
 > ⚠️ Personal / early-stage project. It works day to day, but storage formats and
 > APIs may still change. Not signed for distribution (see [Gatekeeper](#gatekeeper)).
 
-<!-- Add screenshots here before publishing: docs/screenshots/*.png
-![Sidebar & spaces](docs/screenshots/browser.png)
-![Notes & graph](docs/screenshots/graph.png)
-![Reader mode](docs/screenshots/reader.png)
--->
+![Somnia — a browser with a live notes graph on the Home screen](docs/screenshots/main_window.png)
+
+| Notes graph | Customize |
+|:---:|:---:|
+| ![Notes graph](docs/screenshots/graph.png) | ![Customize panel](docs/screenshots/customize.png) |
 
 ## Why Somnia?
 
@@ -91,7 +91,7 @@ on first build.
 ## Tech
 
 Swift · SwiftUI · AppKit · WebKit. Single ~2.6 MB binary, no third‑party
-dependencies. Architecture and dev notes: [`docs/DEV_NOTES.ru.md`](docs/DEV_NOTES.ru.md).
+dependencies. Architecture and dev notes: [`docs/DEV_NOTES.md`](docs/DEV_NOTES.md).
 
 ## License
 

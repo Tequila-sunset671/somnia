@@ -314,11 +314,11 @@ final class NotesStore: ObservableObject {
 
     private func seed() {
         let welcome = Note(title: "Welcome to Somnia", tags: ["intro"],
-            body: "Это твой vault. Заметки связываются ссылками, как в Obsidian.\n\nПопробуй: [[Obsidian Graph]] и [[Spaces and Tabs]].")
-        let graph = Note(title: "Obsidian Graph", tags: ["graph"],
-            body: "Все заметки складываются в граф связей. Узлы можно тащить, клик открывает заметку.\n\nНазад: [[Welcome to Somnia]].")
+            body: "This is your vault. Notes connect through links, just like in Obsidian.\n\nTry: [[Notes and Graph]] and [[Spaces and Tabs]].")
+        let graph = Note(title: "Notes and Graph", tags: ["graph"],
+            body: "Every note joins a graph of connections. Drag the nodes; click one to open the note.\n\nBack: [[Welcome to Somnia]].")
         let spaces = Note(title: "Spaces and Tabs", tags: ["browser"],
-            body: "Браузерная часть Somnia: спейсы, вкладки, закладки.\n\nСм. также [[Welcome to Somnia]].")
+            body: "The browser side of Somnia: spaces, tabs, bookmarks.\n\nSee also [[Welcome to Somnia]].")
         notes = [welcome, graph, spaces]
         notes.forEach(write)
     }

@@ -84,8 +84,8 @@ struct CommandPalette: View {
             let isURL = q.contains(".") && !q.contains(" ")
             out.append(PaletteResult(
                 icon: isURL ? "globe" : "magnifyingglass",
-                title: isURL ? "Открыть \(q)" : "Искать в вебе: \(q)",
-                subtitle: isURL ? "новая вкладка" : "Google",
+                title: isURL ? "Open \(q)" : "Search the web: \(q)",
+                subtitle: isURL ? "new tab" : "Google",
                 action: .web(q)))
         }
 
@@ -94,7 +94,7 @@ struct CommandPalette: View {
                 || t.title.lowercased().contains(ql)
                 || (t.url?.absoluteString.lowercased().contains(ql) ?? false) {
                 out.append(PaletteResult(icon: "rectangle.on.rectangle",
-                                         title: t.title, subtitle: t.url?.host ?? "вкладка",
+                                         title: t.title, subtitle: t.url?.host ?? "tab",
                                          action: .openTab(t)))
             }
         }
@@ -126,7 +126,7 @@ struct CommandPalette: View {
         for n in noteMatches.prefix(6) {
             out.append(PaletteResult(icon: "doc.text",
                                      title: n.title.isEmpty ? "Untitled" : n.title,
-                                     subtitle: "заметка", action: .openNote(n.id)))
+                                     subtitle: "note", action: .openNote(n.id)))
         }
         return out
     }

@@ -1163,7 +1163,7 @@ struct NotesPanel: View {
             } else {
                 VStack(spacing: 12) {
                     Spacer()
-                    Text("Нет заметок").foregroundStyle(p.faint)
+                    Text("No notes yet").foregroundStyle(p.faint)
                     Button("New note") { notes.create() }
                     Spacer()
                 }
@@ -1266,8 +1266,8 @@ struct NoteEditorView: View {
                 let back = notes.backlinks(note)
                 if !back.isEmpty { LinkList(title: "BACKLINKS", icon: "arrow.down.left", items: back) }
 
-                Text(ro ? "Obsidian vault — только чтение. Связи [[Название]] кликабельны."
-                        : "Связывай заметки через [[Название]]. Переключай ✎ / 👁 для предпросмотра.")
+                Text(ro ? "Obsidian vault — read-only. [[Wiki-links]] are clickable."
+                        : "Link notes with [[Title]]. Toggle ✎ / 👁 to preview.")
                     .font(.system(size: 11)).foregroundStyle(p.faint).padding(.top, 4)
             }
             .padding(16)
