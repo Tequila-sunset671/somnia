@@ -63,7 +63,7 @@ Requirements: **macOS 14+** and **Xcode Command Line Tools** (full Xcode not
 required — Somnia builds via `swiftc` directly).
 
 ```bash
-git clone https://github.com/<you>/somnia.git
+git clone https://github.com/Tequila-sunset671/somnia.git
 cd somnia
 ./build.sh          # builds Somnia.app with swiftc
 open Somnia.app
