@@ -7,6 +7,7 @@ struct SomniaApp: App {
     @StateObject private var history = HistoryStore.shared
     @StateObject private var downloads = DownloadsModel.shared
     @StateObject private var favicons = FaviconStore.shared
+    @StateObject private var proxy = ProxyStore.shared
     @FocusedValue(\.browserState) var focusedState: BrowserState?
     @Environment(\.openWindow) private var openWindow
 
@@ -18,6 +19,7 @@ struct SomniaApp: App {
                 .environmentObject(history)
                 .environmentObject(downloads)
                 .environmentObject(favicons)
+                .environmentObject(proxy)
                 .frame(minWidth: 980, minHeight: 640)
         }
         .windowStyle(.hiddenTitleBar)

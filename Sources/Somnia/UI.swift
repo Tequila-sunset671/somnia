@@ -794,6 +794,7 @@ struct ToolbarView: View {
     @EnvironmentObject var theme: Theme
     @EnvironmentObject var notes: NotesStore
     @EnvironmentObject var downloads: DownloadsModel
+    @EnvironmentObject var proxy: ProxyStore
     @State private var copied = false
     @State private var downloadsOpen = false
     var body: some View {
@@ -838,6 +839,16 @@ struct ToolbarView: View {
             IconButton(system: theme.isDark ? "sun.max" : "moon") {
                 theme.appearance = theme.isDark ? .light : .dark
             }
+            Button {
+                state.setProxyEnabled(!state.proxyEnabled)
+            } label: {
+                Image(systemName: state.proxyEnabled ? "shield.lefthalf.filled" : "shield")
+                    .font(.system(size: 16, weight: .medium)).frame(width: 30, height: 30)
+                    .foregroundStyle(state.proxyEnabled ? Color.green : p.faint)
+            }
+            .buttonStyle(.plain)
+            .disabled(!proxy.isConfigured)
+            .help(proxy.isConfigured ? (state.proxyEnabled ? "Proxy on for this window" : "Proxy off") : "Configure a proxy in Customize")
             Button {
                 if state.notesOpen { state.notesOpen = false }
                 else { notes.startFresh(); state.settingsOpen = false; state.notesOpen = true }
@@ -1334,6 +1345,7 @@ struct CustomizePanel: View {
     @EnvironmentObject var theme: Theme
     @EnvironmentObject var notes: NotesStore
     @EnvironmentObject var history: HistoryStore
+    @EnvironmentObject var proxy: ProxyStore
     private let accents = ["#9b8aae", "#7c9b8a", "#ae8a8a", "#8a9bae", "#aea98a"]
     var body: some View {
         let p = theme.palette
@@ -1435,6 +1447,8 @@ struct CustomizePanel: View {
                     }
                 }
                 Divider().overlay(p.border).padding(.vertical, 2)
+                proxySection(p)
+                Divider().overlay(p.border).padding(.vertical, 2)
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("History").font(.system(size: 12)).foregroundStyle(p.dim)
@@ -1485,6 +1499,68 @@ struct CustomizePanel: View {
             Text(title).font(.system(size: 12)).foregroundStyle(theme.palette.dim)
             Spacer()
             ColorPicker("", selection: binding).labelsHidden().frame(width: 28)
+        }
+    }
+
+    private func bindProxy() -> Binding<ProxyConfig> {
+        Binding(
+            get: { proxy.config ?? ProxyConfig(type: .socks5, host: "", port: 1080, username: nil, password: nil) },
+            set: { proxy.config = $0 }
+        )
+    }
+
+    private func proxyField(_ placeholder: String, _ text: Binding<String>, secure: Bool = false) -> some View {
+        let p = theme.palette
+        return Group {
+            if secure { SecureField(placeholder, text: text) } else { TextField(placeholder, text: text) }
+        }
+        .textFieldStyle(.plain).font(.system(size: 12))
+        .foregroundStyle(p.text)
+        .padding(.horizontal, 10).padding(.vertical, 7)
+        .background(RoundedRectangle(cornerRadius: 8).fill(p.surface2))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(p.border))
+    }
+
+    @ViewBuilder func proxySection(_ p: Palette) -> some View {
+        let px = bindProxy()
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Proxy").font(.system(size: 12)).foregroundStyle(p.dim)
+            HStack {
+                Text("Type").font(.system(size: 11)).foregroundStyle(p.faint)
+                Spacer()
+                Picker("", selection: px.type) {
+                    Text("SOCKS5").tag(ProxyType.socks5)
+                    Text("HTTP").tag(ProxyType.http)
+                }
+                .labelsHidden().fixedSize()
+            }
+            proxyField("Host", px.host)
+            TextField("Port", value: px.port, format: .number)
+                .textFieldStyle(.plain).font(.system(size: 12, design: .monospaced))
+                .foregroundStyle(p.text)
+                .padding(.horizontal, 10).padding(.vertical, 7)
+                .background(RoundedRectangle(cornerRadius: 8).fill(p.surface2))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(p.border))
+            proxyField("Username (optional)", Binding(
+                get: { px.username.wrappedValue ?? "" },
+                set: { px.username.wrappedValue = $0.isEmpty ? nil : $0 }))
+            proxyField("Password (optional)", Binding(
+                get: { px.password.wrappedValue ?? "" },
+                set: { px.password.wrappedValue = $0.isEmpty ? nil : $0 }), secure: true)
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Use proxy in this window").font(.system(size: 12)).foregroundStyle(p.dim)
+                    if !proxy.isConfigured {
+                        Text("Enter a host and port to enable.").font(.system(size: 10)).foregroundStyle(p.faint)
+                    }
+                }
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { state.proxyEnabled },
+                    set: { state.setProxyEnabled($0) }))
+                    .labelsHidden().toggleStyle(.switch).tint(theme.accent)
+                    .disabled(!proxy.isConfigured)
+            }
         }
     }
 
