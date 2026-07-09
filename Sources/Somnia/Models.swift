@@ -43,8 +43,6 @@ final class Space: ObservableObject, Identifiable {
 }
 
 final class BrowserState: ObservableObject {
-    static weak var current: BrowserState?
-
     @Published var spaces: [Space]
     @Published var activeSpaceID: UUID
     @Published var activeTabID: UUID?
@@ -72,8 +70,15 @@ final class BrowserState: ObservableObject {
     private var readerSnapshots: [UUID: Any] = [:]   // pre-reader interactionState
     private var readerHTML: [UUID: String] = [:]     // generated reader doc, re-loaded on wake
 
-    init() {
-        if let ps = Store.load(PersistedSession.self, from: "session.json"), !ps.spaces.isEmpty {
+    let isPrimary: Bool
+    private static var primaryClaimed = false
+
+    init(primary: Bool = true) {
+        self.isPrimary = primary && !BrowserState.primaryClaimed
+        if self.isPrimary { BrowserState.primaryClaimed = true }
+
+        if self.isPrimary,
+           let ps = Store.load(PersistedSession.self, from: "session.json"), !ps.spaces.isEmpty {
             let restored = ps.spaces.map { sp in
                 Space(id: sp.id, name: sp.name, accentHex: sp.accentHex,
                       tabs: sp.tabs.map { t in
@@ -88,7 +93,8 @@ final class BrowserState: ObservableObject {
             self.maxLiveTabs = ps.maxLiveTabs
             self.bookmarks = ps.bookmarks ?? []
             self.sidebarCollapsed = ps.sidebarCollapsed ?? false
-        } else {
+        } else if self.isPrimary {
+            // Primary window, first-ever launch: keep the original eight demo tabs.
             let tabs = [
                 Tab(title: "YouTube",     url: URL(string: "https://www.youtube.com"),       letter: "Y", tintHex: "#ff3b30"),
                 Tab(title: "Google",      url: URL(string: "https://www.google.com"),        letter: "G", tintHex: "#4285f4"),
@@ -103,16 +109,24 @@ final class BrowserState: ObservableObject {
             self.spaces = [space]
             self.activeSpaceID = space.id
             self.activeTabID = tabs.first?.id
+        } else {
+            // Secondary window: a single empty tab.
+            let space = Space(name: "Personal", accentHex: "#9b8aae",
+                              tabs: [Tab(title: "New Tab", url: nil, letter: "N", tintHex: "#9b8aae")])
+            self.spaces = [space]
+            self.activeSpaceID = space.id
+            self.activeTabID = space.tabs.first?.id
         }
 
-        BrowserState.current = self
         configureInitialSleep()
         startIdleSweep()
         startMemoryPressureMonitor()
-        saveSession()   // ensure a snapshot exists from first launch
-        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification,
-                                               object: nil, queue: .main) { [weak self] _ in
-            self?.saveSession()
+        if isPrimary {
+            saveSession()
+            NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification,
+                                                   object: nil, queue: .main) { [weak self] _ in
+                self?.saveSession()
+            }
         }
     }
 
@@ -184,7 +198,7 @@ final class BrowserState: ObservableObject {
         tab.title = url.host ?? (url.isFileURL ? url.lastPathComponent : text)
         tab.lastActive = Date()
         tab.isAsleep = false
-        let wv = WebViewPool.shared.webView(for: tab)
+        let wv = WebViewPool.shared.webView(for: tab, owner: self)
         if url.isFileURL { wv.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent()) }
         else { wv.load(URLRequest(url: url)) }
         objectWillChange.send()
@@ -192,9 +206,9 @@ final class BrowserState: ObservableObject {
         scheduleSave()
     }
 
-    func goBack()    { if let t = activeTab { exitReaderState(t); WebViewPool.shared.webView(for: t).goBack() } }
-    func goForward() { if let t = activeTab { exitReaderState(t); WebViewPool.shared.webView(for: t).goForward() } }
-    func reload()    { if let t = activeTab { exitReaderState(t); WebViewPool.shared.webView(for: t).reload() } }
+    func goBack()    { if let t = activeTab { exitReaderState(t); WebViewPool.shared.webView(for: t, owner: self).goBack() } }
+    func goForward() { if let t = activeTab { exitReaderState(t); WebViewPool.shared.webView(for: t, owner: self).goForward() } }
+    func reload()    { if let t = activeTab { exitReaderState(t); WebViewPool.shared.webView(for: t, owner: self).reload() } }
 
     func openNotesGraph() {
         settingsOpen = false
@@ -264,7 +278,7 @@ final class BrowserState: ObservableObject {
     func toggleReader() {
         bookmarksSpaceActive = false
         guard let tab = activeTab, WebViewPool.shared.has(tab.id) else { return }
-        let wv = WebViewPool.shared.webView(for: tab)
+        let wv = WebViewPool.shared.webView(for: tab, owner: self)
         if tab.isReader {
             if let snap = readerSnapshots.removeValue(forKey: tab.id) { wv.interactionState = snap }
             readerHTML[tab.id] = nil
@@ -467,7 +481,7 @@ final class BrowserState: ObservableObject {
     private func wake(_ tab: Tab) {
         tab.lastActive = Date()
         if tab.url != nil {
-            let wv = WebViewPool.shared.webView(for: tab)
+            let wv = WebViewPool.shared.webView(for: tab, owner: self)
             tab.isAsleep = false
             // Re-render Reader Mode on wake: a slept reader tab's loadHTMLString
             // state doesn't reconstruct from interactionState, so reload the doc.
@@ -542,6 +556,7 @@ final class BrowserState: ObservableObject {
 
     /// Debounced session save (called from navigation/title updates too).
     func scheduleSave() {
+        guard isPrimary else { return }
         saveTimer?.invalidate()
         saveTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
             self?.saveSession()
@@ -549,6 +564,7 @@ final class BrowserState: ObservableObject {
     }
 
     func saveSession() {
+        guard isPrimary else { return }
         let snapshot = PersistedSession(
             spaces: spaces.map { s in
                 PersistedSpace(id: s.id, name: s.name, accentHex: s.accentHex,

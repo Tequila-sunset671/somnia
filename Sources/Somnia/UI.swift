@@ -28,7 +28,7 @@ struct IconButton: View {
 // MARK: - Root layout
 
 struct RootView: View {
-    @EnvironmentObject var state: BrowserState
+    @StateObject private var state = BrowserState()
     @EnvironmentObject var theme: Theme
     var body: some View {
         let p = theme.palette
@@ -60,6 +60,8 @@ struct RootView: View {
         .animation(.easeOut(duration: 0.28), value: state.notesOpen)
         .animation(.easeOut(duration: 0.18), value: state.settingsOpen)
         .animation(.easeOut(duration: 0.15), value: state.paletteOpen)
+        .environmentObject(state)
+        .focusedValue(\.browserState, state)
     }
 }
 
@@ -641,7 +643,7 @@ struct MainArea: View {
                     guard let url, url.isFileURL else { return }
                     let ext = url.pathExtension.lowercased()
                     guard ["pdf", "html", "htm"].contains(ext) else { return }
-                    DispatchQueue.main.async { BrowserState.current?.openFile(url) }
+                    DispatchQueue.main.async { state.openFile(url) }
                 }
             }
             return true

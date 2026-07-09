@@ -6,6 +6,7 @@ import AppKit
 
 final class TabNavDelegate: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     weak var tab: Tab?
+    weak var owner: BrowserState?
     private var observations: [NSKeyValueObservation] = []
     // URLs of the image / link under the cursor at the last right-click, captured
     // by the injected contextmenu script (see WebViewPool.contextCaptureJS).
@@ -30,7 +31,7 @@ final class TabNavDelegate: NSObject, WKNavigationDelegate, WKUIDelegate, WKScri
         if !priv {
             HistoryStore.shared.record(url: webView.url, title: webView.title)
             fetchFavicon(webView)
-            BrowserState.current?.scheduleSave()   // persist updated title/url
+            owner?.scheduleSave()   // persist updated title/url
         }
     }
 
@@ -62,7 +63,7 @@ final class TabNavDelegate: NSObject, WKNavigationDelegate, WKUIDelegate, WKScri
            navigationAction.modifierFlags.contains(.command),
            let url = navigationAction.request.url {
             decisionHandler(.cancel)
-            BrowserState.current?.openInBackgroundTab(url)
+            owner?.openInBackgroundTab(url)
             return
         }
         decisionHandler(.allow)
@@ -88,7 +89,7 @@ final class TabNavDelegate: NSObject, WKNavigationDelegate, WKUIDelegate, WKScri
                  for navigationAction: WKNavigationAction,
                  windowFeatures: WKWindowFeatures) -> WKWebView? {
         if let url = navigationAction.request.url {
-            BrowserState.current?.openInNewTab(url, title: url.host ?? url.absoluteString)
+            owner?.openInNewTab(url, title: url.host ?? url.absoluteString)
         }
         return nil   // don't create a nested WKWebView
     }
@@ -103,7 +104,7 @@ final class TabNavDelegate: NSObject, WKNavigationDelegate, WKUIDelegate, WKScri
                     tab.url = url
                     if !tab.isPrivate {
                         HistoryStore.shared.record(url: url, title: wv.title)
-                        BrowserState.current?.scheduleSave()
+                        self?.owner?.scheduleSave()
                     }
                 }
             },
@@ -263,7 +264,7 @@ final class WebViewPool {
     })();
     """
 
-    func webView(for tab: Tab) -> WKWebView {
+    func webView(for tab: Tab, owner: BrowserState) -> WKWebView {
         if let v = views[tab.id] { return v }
         let cfg = WKWebViewConfiguration()
         cfg.defaultWebpagePreferences.allowsContentJavaScript = true
@@ -271,6 +272,7 @@ final class WebViewPool {
         // Private tabs get an ephemeral store (no cookies/cache written to disk).
         if tab.isPrivate { cfg.websiteDataStore = .nonPersistent() }
         let del = TabNavDelegate(tab: tab)
+        del.owner = owner
         let ucc = cfg.userContentController
         ucc.add(del, name: "somniaCtx")
         ucc.addUserScript(WKUserScript(source: WebViewPool.contextCaptureJS,
@@ -419,13 +421,14 @@ final class WebHostView: NSView {
 
 struct WebArea: NSViewRepresentable {
     @ObservedObject var tab: Tab
+    @EnvironmentObject var state: BrowserState
     func makeNSView(context: Context) -> WebHostView {
         let h = WebHostView()
-        h.host(WebViewPool.shared.webView(for: tab))
+        h.host(WebViewPool.shared.webView(for: tab, owner: state))
         return h
     }
     func updateNSView(_ nsView: WebHostView, context: Context) {
-        nsView.host(WebViewPool.shared.webView(for: tab))
+        nsView.host(WebViewPool.shared.webView(for: tab, owner: state))
     }
 }
 
