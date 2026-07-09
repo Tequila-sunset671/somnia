@@ -130,6 +130,26 @@ final class BrowserState: ObservableObject {
         }
     }
 
+    /// Tears down this window's resources: every tab's pooled WKWebView/delegate
+    /// (same per-tab teardown `closeTab` uses), the idle sweep timer, the debounced
+    /// save timer, and the memory-pressure source. Without this, closing a window
+    /// via its red button (⌘W only closes a tab) leaks all of it into the
+    /// process-wide `WebViewPool.shared` and leaves the repeating Timer/dispatch
+    /// source alive on the run loop forever.
+    deinit {
+        let ids = allTabs.map { $0.id }
+        let timer = idleTimer
+        let saver = saveTimer
+        let pressureSource = memoryPressureSource
+        let teardown = {
+            for id in ids { WebViewPool.shared.remove(id) }
+            timer?.invalidate()
+            saver?.invalidate()
+            pressureSource?.cancel()
+        }
+        if Thread.isMainThread { teardown() } else { DispatchQueue.main.async(execute: teardown) }
+    }
+
     var activeSpace: Space? { spaces.first { $0.id == activeSpaceID } }
     var activeTab: Tab? { activeSpace?.tabs.first { $0.id == activeTabID } }
     var allTabs: [Tab] { spaces.flatMap { $0.tabs } }
