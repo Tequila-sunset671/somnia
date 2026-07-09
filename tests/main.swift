@@ -83,6 +83,36 @@ do {
     check(fenced.contains { if case .code = $0 { return true }; return false }, "markdown: fenced code block")
 }
 
+// MARK: Proxy config
+do {
+    // validation
+    let ok = ProxyConfig(type: .socks5, host: "127.0.0.1", port: 9050, username: nil, password: nil)
+    check(ProxyStore.validate(ok), "proxy: valid socks5 config")
+    check(!ProxyStore.validate(ProxyConfig(type: .http, host: "", port: 8080, username: nil, password: nil)), "proxy: empty host invalid")
+    check(!ProxyStore.validate(ProxyConfig(type: .http, host: "h", port: 0, username: nil, password: nil)), "proxy: port 0 invalid")
+    check(!ProxyStore.validate(ProxyConfig(type: .http, host: "h", port: 70000, username: nil, password: nil)), "proxy: port >65535 invalid")
+
+    // Codable round-trip
+    let data = try! JSONEncoder().encode(ok)
+    let back = try! JSONDecoder().decode(ProxyConfig.self, from: data)
+    eq(back, ok, "proxy: Codable round-trip")
+
+    // type rawValue
+    eq(ProxyType(rawValue: "http"), .http, "proxy: ProxyType rawValue")
+    eq(ProxyType.allCases.count, 2, "proxy: two types")
+
+    // data store kind
+    if case .direct = dataStoreKind(proxyEnabled: false) {} else { check(false, "proxy: off → direct") }
+    if case .proxied = dataStoreKind(proxyEnabled: true) {} else { check(false, "proxy: on → proxied") }
+
+    // makeProxyConfiguration nil vs non-nil
+    let store = ProxyStore()
+    store.config = nil
+    check(store.makeProxyConfiguration() == nil, "proxy: unconfigured → nil ProxyConfiguration")
+    store.config = ok
+    check(store.makeProxyConfiguration() != nil, "proxy: configured → non-nil ProxyConfiguration")
+}
+
 // MARK: Report
 print("")
 if failures == 0 {

@@ -21,7 +21,7 @@ fi
 xcrun --sdk macosx swiftc -O -target arm64-apple-macosx14.0 \
   "$PWD"/Sources/Somnia/*.swift \
   -o "$APP/Contents/MacOS/Somnia" \
-  -framework SwiftUI -framework AppKit -framework WebKit
+  -framework SwiftUI -framework AppKit -framework WebKit -framework Network
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>

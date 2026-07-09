@@ -12,6 +12,6 @@ BIN="$(mktemp -d)/somnia_tests"
 xcrun --sdk macosx swiftc -O -target arm64-apple-macosx14.0 \
   ${(f)SRC} tests/main.swift \
   -o "$BIN" \
-  -framework SwiftUI -framework AppKit -framework WebKit
+  -framework SwiftUI -framework AppKit -framework WebKit -framework Network
 
 "$BIN"
