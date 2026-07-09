@@ -40,6 +40,7 @@ struct PersistedSession: Codable {
     var maxLiveTabs: Int
     var bookmarks: [Bookmark]?     // optional for backward compatibility
     var sidebarCollapsed: Bool?
+    var proxyEnabled: Bool?        // per-window proxy toggle (nil = off; only primary persists)
 }
 
 struct PersistedSettings: Codable {

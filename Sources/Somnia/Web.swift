@@ -246,6 +246,35 @@ final class WebViewPool {
     private var views: [UUID: WKWebView] = [:]
     private var delegates: [UUID: TabNavDelegate] = [:]
     private var saved: [UUID: Any] = [:]   // interactionState of suspended tabs
+    private var proxiedStore: WKWebsiteDataStore?
+
+    /// The persistent WKWebsiteDataStore for a given profile kind. `.direct` is
+    /// the standard default store; `.proxied` is one shared identified store
+    /// (built lazily, cached) carrying the current proxyConfigurations so every
+    /// proxied tab in every window shares cookies/cache and the same egress.
+    func dataStore(for kind: DataStoreKind) -> WKWebsiteDataStore {
+        switch kind {
+        case .direct:
+            return .default()
+        case .proxied:
+            let store = proxiedStore ?? WKWebsiteDataStore(forIdentifier: ProxyStore.proxiedStoreID)
+            proxiedStore = store
+            if let cfg = ProxyStore.shared.makeProxyConfiguration() {
+                store.proxyConfigurations = [cfg]
+            }
+            return store
+        }
+    }
+
+    /// Tear a webview down and rebuild it lazily against the current store,
+    /// preserving history + scroll via interactionState (same as reader round-trip).
+    /// Uses `teardown` (not `remove`) so the interactionState just stashed below
+    /// isn't immediately wiped by `remove`'s own `saved[id] = nil`.
+    func rebuild(_ tabID: UUID) {
+        guard let wv = views[tabID] else { return }
+        saved[tabID] = wv.interactionState
+        teardown(tabID)   // KVO invalidate + delegate cleanup, without clearing `saved`
+    }
 
     /// Records the image/link URL under the cursor on right-click so our custom
     /// "Save Image"/"Download Linked File" menu items know what to download.
@@ -270,7 +299,12 @@ final class WebViewPool {
         cfg.defaultWebpagePreferences.allowsContentJavaScript = true
         cfg.preferences.isElementFullscreenEnabled = true
         // Private tabs get an ephemeral store (no cookies/cache written to disk).
-        if tab.isPrivate { cfg.websiteDataStore = .nonPersistent() }
+        // Non-private tabs pick the direct or proxied persistent store per-window.
+        if tab.isPrivate {
+            cfg.websiteDataStore = .nonPersistent()
+        } else {
+            cfg.websiteDataStore = WebViewPool.shared.dataStore(for: dataStoreKind(proxyEnabled: owner.proxyEnabled))
+        }
         let del = TabNavDelegate(tab: tab)
         del.owner = owner
         let ucc = cfg.userContentController

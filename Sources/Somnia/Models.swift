@@ -63,6 +63,8 @@ final class BrowserState: ObservableObject {
     // --- tab-optimisation policy ---
     @Published var maxLiveTabs = 6          // budget of simultaneously loaded WKWebViews
     @Published var liveCount = 0            // for UI feedback
+    @Published var proxyEnabled = false
+    @Published var proxyBanner: String?
     let idleLimit: TimeInterval = 15 * 60   // suspend tabs idle longer than this (skips playing media)
     private var idleTimer: Timer?
     private var saveTimer: Timer?
@@ -93,6 +95,7 @@ final class BrowserState: ObservableObject {
             self.maxLiveTabs = ps.maxLiveTabs
             self.bookmarks = ps.bookmarks ?? []
             self.sidebarCollapsed = ps.sidebarCollapsed ?? false
+            self.proxyEnabled = ps.proxyEnabled ?? false
         } else if self.isPrimary {
             // Primary window, first-ever launch: keep the original eight demo tabs.
             let tabs = [
@@ -572,6 +575,24 @@ final class BrowserState: ObservableObject {
 
     private func refreshLiveCount() { liveCount = WebViewPool.shared.liveCount }
 
+    /// Flip this window's proxy toggle and rebuild every live tab's WKWebView
+    /// against the newly selected data store (direct vs. proxied). History and
+    /// scroll survive via interactionState (see WebViewPool.rebuild).
+    func setProxyEnabled(_ on: Bool) {
+        guard proxyEnabled != on else { return }
+        proxyEnabled = on
+        // Rebuild every live tab against the newly selected store.
+        for t in allTabs where WebViewPool.shared.has(t.id) {
+            WebViewPool.shared.rebuild(t.id)
+            t.isAsleep = true
+        }
+        // Wake the active tab immediately (reloads through the new store).
+        if let a = activeTab { wake(a) }
+        objectWillChange.send()
+        refreshLiveCount()
+        scheduleSave()   // no-op unless primary
+    }
+
     // MARK: - Persistence
 
     /// Debounced session save (called from navigation/title updates too).
@@ -597,7 +618,8 @@ final class BrowserState: ObservableObject {
             activeTabID: activeTabID,
             maxLiveTabs: maxLiveTabs,
             bookmarks: bookmarks,
-            sidebarCollapsed: sidebarCollapsed)
+            sidebarCollapsed: sidebarCollapsed,
+            proxyEnabled: proxyEnabled)
         Store.save(snapshot, to: "session.json")
     }
 
