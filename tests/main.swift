@@ -102,8 +102,8 @@ do {
     eq(ProxyType.allCases.count, 2, "proxy: two types")
 
     // data store kind
-    if case .direct = dataStoreKind(proxyEnabled: false) {} else { check(false, "proxy: off → direct") }
-    if case .proxied = dataStoreKind(proxyEnabled: true) {} else { check(false, "proxy: on → proxied") }
+    check({ if case .direct = dataStoreKind(proxyEnabled: false) { return true } else { return false } }(), "proxy: off → direct")
+    check({ if case .proxied = dataStoreKind(proxyEnabled: true) { return true } else { return false } }(), "proxy: on → proxied")
 
     // makeProxyConfiguration nil vs non-nil
     let store = ProxyStore()

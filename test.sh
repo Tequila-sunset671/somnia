@@ -14,4 +14,5 @@ xcrun --sdk macosx swiftc -O -target arm64-apple-macosx14.0 \
   -o "$BIN" \
   -framework SwiftUI -framework AppKit -framework WebKit -framework Network
 
+export SOMNIA_DATA_DIR="$(mktemp -d)/somnia-test-data"
 "$BIN"

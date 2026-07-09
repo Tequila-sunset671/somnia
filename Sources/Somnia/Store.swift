@@ -60,8 +60,13 @@ struct PersistedSettings: Codable {
 
 enum Store {
     static let dir: URL = {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let d = base.appendingPathComponent("Somnia", isDirectory: true)
+        let d: URL
+        if let override = ProcessInfo.processInfo.environment["SOMNIA_DATA_DIR"], !override.isEmpty {
+            d = URL(fileURLWithPath: override, isDirectory: true)
+        } else {
+            let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            d = base.appendingPathComponent("Somnia", isDirectory: true)
+        }
         try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
         return d
     }()
