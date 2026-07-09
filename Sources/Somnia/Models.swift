@@ -604,6 +604,14 @@ final class BrowserState: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 4, execute: item)
     }
 
+    /// Dismiss the banner immediately and cancel the pending auto-clear timer
+    /// so it doesn't fire later and (harmlessly) re-clear an already-nil banner.
+    func dismissProxyBanner() {
+        proxyBannerClear?.cancel()
+        proxyBannerClear = nil
+        proxyBanner = nil
+    }
+
     // MARK: - Persistence
 
     /// Debounced session save (called from navigation/title updates too).

@@ -69,7 +69,7 @@ struct RootView: View {
                     .background(Color.red.opacity(0.9), in: Capsule())
                     .padding(.top, 10)
                     .transition(.move(edge: .top).combined(with: .opacity))
-                    .onTapGesture { state.proxyBanner = nil }
+                    .onTapGesture { state.dismissProxyBanner() }
             }
         }
         .animation(.easeInOut(duration: 0.2), value: state.proxyBanner)

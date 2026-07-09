@@ -327,7 +327,11 @@ final class WebViewPool {
         // Private tabs get an ephemeral store (no cookies/cache written to disk).
         // Non-private tabs pick the direct or proxied persistent store per-window.
         if tab.isPrivate {
-            cfg.websiteDataStore = .nonPersistent()
+            let store = WKWebsiteDataStore.nonPersistent()
+            if owner.proxyEnabled, let proxyCfg = ProxyStore.shared.makeProxyConfiguration() {
+                store.proxyConfigurations = [proxyCfg]
+            }
+            cfg.websiteDataStore = store
         } else {
             cfg.websiteDataStore = WebViewPool.shared.dataStore(for: dataStoreKind(proxyEnabled: owner.proxyEnabled))
         }

@@ -54,8 +54,8 @@ final class ProxyStore: ObservableObject {
         case .socks5: cfg = ProxyConfiguration(socksv5Proxy: endpoint)
         case .http:   cfg = ProxyConfiguration(httpCONNECTProxy: endpoint, tlsOptions: nil)
         }
-        if let u = c.username, let p = c.password, !u.isEmpty {
-            cfg.applyCredential(username: u, password: p)
+        if let u = c.username, !u.isEmpty {
+            cfg.applyCredential(username: u, password: c.password ?? "")
         }
         return cfg
     }
