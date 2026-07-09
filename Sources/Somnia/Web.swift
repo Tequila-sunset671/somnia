@@ -293,6 +293,17 @@ final class WebViewPool {
     })();
     """
 
+    static let webrtcBlockJS = """
+    (function () {
+      const block = function () { throw new Error('WebRTC disabled'); };
+      try {
+        Object.defineProperty(window, 'RTCPeerConnection', { value: block, writable: false });
+        Object.defineProperty(window, 'webkitRTCPeerConnection', { value: block, writable: false });
+        Object.defineProperty(window, 'RTCDataChannel', { value: block, writable: false });
+      } catch (e) {}
+    })();
+    """
+
     func webView(for tab: Tab, owner: BrowserState) -> WKWebView {
         if let v = views[tab.id] { return v }
         let cfg = WKWebViewConfiguration()
@@ -311,6 +322,10 @@ final class WebViewPool {
         ucc.add(del, name: "somniaCtx")
         ucc.addUserScript(WKUserScript(source: WebViewPool.contextCaptureJS,
                                        injectionTime: .atDocumentStart, forMainFrameOnly: false))
+        if owner.proxyEnabled {
+            ucc.addUserScript(WKUserScript(source: WebViewPool.webrtcBlockJS,
+                                           injectionTime: .atDocumentStart, forMainFrameOnly: false))
+        }
         // Tracker/ad blocking: attach the compiled rule list if enabled.
         if Theme.current?.blockTrackers == true {
             if let list = ContentBlocker.shared.ruleList { ucc.add(list) }
