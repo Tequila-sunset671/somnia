@@ -30,6 +30,7 @@ struct IconButton: View {
 struct RootView: View {
     @StateObject private var state = BrowserState()
     @EnvironmentObject var theme: Theme
+    @Environment(\.openWindow) private var openWindow
     var body: some View {
         let p = theme.palette
         ZStack {
@@ -75,6 +76,9 @@ struct RootView: View {
         .animation(.easeInOut(duration: 0.2), value: state.proxyBanner)
         .environmentObject(state)
         .focusedValue(\.browserState, state)
+        .onReceive(NotificationCenter.default.publisher(for: .somniaNewWindow)) { _ in
+            if NewWindowCoordinator.claim() { openWindow(id: "main", value: UUID()) }
+        }
     }
 }
 
@@ -1340,20 +1344,30 @@ struct NotesGraphView: View {
 
 // MARK: - Customize panel (theme / layout / density / accent)
 
+/// Measures the Customize panel's content height so the panel can size to its
+/// content but cap at the available screen height and scroll beyond it.
+private struct PanelContentHeight: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
 struct CustomizePanel: View {
     @EnvironmentObject var state: BrowserState
     @EnvironmentObject var theme: Theme
     @EnvironmentObject var notes: NotesStore
     @EnvironmentObject var history: HistoryStore
     @EnvironmentObject var proxy: ProxyStore
+    @State private var contentHeight: CGFloat = 0
     private let accents = ["#9b8aae", "#7c9b8a", "#ae8a8a", "#8a9bae", "#aea98a"]
     var body: some View {
         let p = theme.palette
+        GeometryReader { geo in
         ZStack(alignment: .bottomLeading) {
             Color.black.opacity(0.001).ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { state.settingsOpen = false }
 
+            ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 Text("CUSTOMIZE").font(.system(size: 11, weight: .semibold)).tracking(2)
                     .foregroundStyle(p.faint)
@@ -1461,13 +1475,22 @@ struct CustomizePanel: View {
                         .disabled(history.entries.isEmpty)
                 }
             }
-            .padding(18).frame(width: 300)
+            .padding(18)
+            .background(GeometryReader { g in
+                Color.clear.preference(key: PanelContentHeight.self, value: g.size.height)
+            })
+            }
+            .frame(width: 300,
+                   height: min(contentHeight == 0 ? .infinity : contentHeight,
+                               max(200, geo.size.height - (theme.appGap + 56) - 24)))
+            .onPreferenceChange(PanelContentHeight.self) { contentHeight = $0 }
             .background(ZStack {
                 VisualEffect(material: .hudWindow, blending: .withinWindow)
                 p.surface
             }.clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)))
             .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(p.border))
             .padding(.leading, theme.appGap + 12).padding(.bottom, theme.appGap + 56)
+        }
         }
     }
 

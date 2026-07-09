@@ -1,7 +1,32 @@
 import SwiftUI
+import AppKit
+
+/// Adds a Dock right-click "New Window" item and reopens a window when the
+/// Dock icon is clicked with none visible. Both bridge to SwiftUI's window
+/// machinery via a notification (a live window opens the new one; with no
+/// windows, returning true lets SwiftUI restore one).
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        let item = NSMenuItem(title: "New Window", action: #selector(newWindow(_:)), keyEquivalent: "")
+        item.target = self
+        menu.addItem(item)
+        return menu
+    }
+
+    @objc func newWindow(_ sender: Any?) {
+        NotificationCenter.default.post(name: .somniaNewWindow, object: nil)
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { NotificationCenter.default.post(name: .somniaNewWindow, object: nil) }
+        return true
+    }
+}
 
 @main
 struct SomniaApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var theme = Theme()
     @StateObject private var notes = NotesStore()
     @StateObject private var history = HistoryStore.shared
@@ -12,7 +37,10 @@ struct SomniaApp: App {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
-        WindowGroup(id: "main") {
+        // Value-based WindowGroup: opening with a fresh UUID each time reliably
+        // spawns a NEW window (a dataless WindowGroup would just re-focus the
+        // existing one, so a second window only appeared after closing the first).
+        WindowGroup(id: "main", for: UUID.self) { _ in
             RootView()
                 .environmentObject(theme)
                 .environmentObject(notes)
@@ -29,7 +57,7 @@ struct SomniaApp: App {
                     .keyboardShortcut("t", modifiers: .command)
                 Button("New Private Tab") { focusedState?.newPrivateTab() }
                     .keyboardShortcut("n", modifiers: [.command, .shift])
-                Button("New Window") { openWindow(id: "main") }
+                Button("New Window") { openWindow(id: "main", value: UUID()) }
                     .keyboardShortcut("n", modifiers: .command)
                 Button("Open File…") { focusedState?.promptOpenFile() }
                     .keyboardShortcut("o", modifiers: .command)
