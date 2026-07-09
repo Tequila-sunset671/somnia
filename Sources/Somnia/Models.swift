@@ -593,6 +593,17 @@ final class BrowserState: ObservableObject {
         scheduleSave()   // no-op unless primary
     }
 
+    /// Show a transient banner (e.g. proxy connection failure) that auto-clears
+    /// after ~4s, debouncing repeated triggers so the timer restarts each time.
+    private var proxyBannerClear: DispatchWorkItem?
+    func showProxyBanner(_ message: String) {
+        proxyBanner = message
+        proxyBannerClear?.cancel()
+        let item = DispatchWorkItem { [weak self] in self?.proxyBanner = nil }
+        proxyBannerClear = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4, execute: item)
+    }
+
     // MARK: - Persistence
 
     /// Debounced session save (called from navigation/title updates too).

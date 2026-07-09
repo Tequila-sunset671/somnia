@@ -60,6 +60,19 @@ struct RootView: View {
         .animation(.easeOut(duration: 0.28), value: state.notesOpen)
         .animation(.easeOut(duration: 0.18), value: state.settingsOpen)
         .animation(.easeOut(duration: 0.15), value: state.paletteOpen)
+        .overlay(alignment: .top) {
+            if let msg = state.proxyBanner {
+                Text(msg)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(Color.red.opacity(0.9), in: Capsule())
+                    .padding(.top, 10)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .onTapGesture { state.proxyBanner = nil }
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: state.proxyBanner)
         .environmentObject(state)
         .focusedValue(\.browserState, state)
     }

@@ -46,9 +46,24 @@ final class TabNavDelegate: NSObject, WKNavigationDelegate, WKUIDelegate, WKScri
     }
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         tab?.isLoading = false
+        handleNavError(error)
     }
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         tab?.isLoading = false
+        handleNavError(error)
+    }
+
+    /// When this window's proxy is on, map connection-ish NSURLError codes to a
+    /// transient banner so the user knows the proxy (not the site) is at fault.
+    private func handleNavError(_ error: Error) {
+        guard owner?.proxyEnabled == true else { return }
+        let ns = error as NSError
+        let proxyish: Set<Int> = [NSURLErrorCannotConnectToHost, NSURLErrorTimedOut,
+                                  NSURLErrorCannotFindHost, NSURLErrorNetworkConnectionLost,
+                                  NSURLErrorNotConnectedToInternet]
+        if ns.domain == NSURLErrorDomain && proxyish.contains(ns.code) {
+            owner?.showProxyBanner("Proxy connection failed — pages may not load. Check proxy settings.")
+        }
     }
 
     // Cmd+click → open the link in a new BACKGROUND tab (stay on this page).
